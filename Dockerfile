@@ -14,7 +14,7 @@
     
     # Use stable channel to get latest Dart SDK (satisfies ^3.9.2)
     RUN git clone https://github.com/flutter/flutter.git \
-        --branch master \
+        --branch stable \
         --depth 1 \
         $FLUTTER_HOME
     
