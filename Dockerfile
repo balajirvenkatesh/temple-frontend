@@ -7,55 +7,34 @@
     ENV CI=true
     ENV PUB_CACHE=/root/.pub-cache
     
-    # System dependencies
     RUN apt-get update && apt-get install -y \
         curl git unzip xz-utils zip libglu1-mesa ca-certificates \
         && update-ca-certificates \
         && rm -rf /var/lib/apt/lists/*
     
-    # Install Flutter SDK — use a real stable tag
+    # Use stable channel to get latest Dart SDK (satisfies ^3.9.2)
     RUN git clone https://github.com/flutter/flutter.git \
-        --branch stable \
+        --branch master \
         --depth 1 \
         $FLUTTER_HOME
     
-    # Pre-cache web artifacts so build works offline
     RUN flutter precache --web
-    
-    # Flutter config
-    RUN flutter config --no-analytics && \
-        flutter config --enable-web
+    RUN flutter config --no-analytics && flutter config --enable-web
     
     WORKDIR /app
-    
-    # Copy dependency files
-    COPY pubspec.yaml pubspec.lock ./
-    
-    # Get dependencies
+    COPY pubspec.yaml pubspec.lock* ./
     RUN flutter pub get
     
-    # Copy full source
     COPY . .
-    
-    # Build web release
     RUN flutter build web --release
     
     # ---------- RUNTIME STAGE ----------
-    FROM nginx:alpine
+    FROM python:3.11-alpine
     
-    # SPA routing: redirect all 404s back to index.html
-    RUN printf 'server {\n\
-        listen 80;\n\
-        root /usr/share/nginx/html;\n\
-        index index.html;\n\
-        location / {\n\
-            try_files $uri $uri/ /index.html;\n\
-        }\n\
-    }\n' > /etc/nginx/conf.d/default.conf
+    COPY --from=build-env /app/build/web /app
     
-    # Copy Flutter web build
-    COPY --from=build-env /app/build/web /usr/share/nginx/html
+    WORKDIR /app
     
-    EXPOSE 80
+    EXPOSE 8080
     
-    CMD ["nginx", "-g", "daemon off;"]
+    CMD ["sh", "-c", "python -m http.server ${PORT:-8080}"]
