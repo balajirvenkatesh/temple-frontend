@@ -13,12 +13,15 @@ RUN git clone --branch 3.35.4 https://github.com/flutter/flutter.git $FLUTTER_HO
 
 RUN flutter config --no-analytics
 RUN flutter config --enable-web
-RUN flutter doctor -v
+
+# Initialize flutter safely
+RUN flutter --version
 
 WORKDIR /app
 COPY . .
 
 RUN flutter pub get
+
 RUN flutter build web --release
 
 FROM nginx:alpine
