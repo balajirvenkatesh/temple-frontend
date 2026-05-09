@@ -7,29 +7,30 @@
     ENV CI=true
     ENV PUB_CACHE=/root/.pub-cache
     ENV FLUTTER_SUPPRESS_ANALYTICS=true
+    ENV DART_VM_OPTIONS="--old_gen_heap_size=512"
     
     RUN apt-get update && apt-get install -y --no-install-recommends \
         curl git unzip xz-utils zip ca-certificates \
         && update-ca-certificates \
         && rm -rf /var/lib/apt/lists/*
     
+    # Shallow clone stable Flutter
     RUN git clone https://github.com/flutter/flutter.git \
         --branch stable \
         --depth 1 \
+        --single-branch \
         $FLUTTER_HOME
     
-    # Configure first, then precache only web artifacts
     RUN flutter config --no-analytics && \
         flutter config --enable-web
-    
-    # Precache only web — split from config to isolate errors
-    RUN flutter precache --web
     
     WORKDIR /app
     COPY pubspec.yaml pubspec.lock* ./
     RUN flutter pub get
     
     COPY . .
+    
+    # --no-tree-shake-icons saves ~300MB memory during build
     RUN flutter build web --release --no-tree-shake-icons
     
     # ---------- RUNTIME STAGE ----------
