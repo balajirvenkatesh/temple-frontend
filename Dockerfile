@@ -6,30 +6,30 @@
     ENV PATH=$FLUTTER_HOME/bin:$FLUTTER_HOME/bin/cache/dart-sdk/bin:$PATH
     ENV CI=true
     ENV PUB_CACHE=/root/.pub-cache
-    ENV FLUTTER_WEB_USE_SKIA=false
+    ENV FLUTTER_SUPPRESS_ANALYTICS=true
     
     RUN apt-get update && apt-get install -y --no-install-recommends \
         curl git unzip xz-utils zip ca-certificates \
         && update-ca-certificates \
         && rm -rf /var/lib/apt/lists/*
     
-    # Use stable Flutter
     RUN git clone https://github.com/flutter/flutter.git \
         --branch stable \
         --depth 1 \
         $FLUTTER_HOME
     
+    # Configure first, then precache only web artifacts
     RUN flutter config --no-analytics && \
-        flutter config --enable-web && \
-        flutter precache --web --no-android --no-ios --no-linux --no-macos --no-windows --no-fuchsia
+        flutter config --enable-web
+    
+    # Precache only web — split from config to isolate errors
+    RUN flutter precache --web
     
     WORKDIR /app
     COPY pubspec.yaml pubspec.lock* ./
     RUN flutter pub get
     
     COPY . .
-    
-    # Build with reduced memory usage
     RUN flutter build web --release --no-tree-shake-icons
     
     # ---------- RUNTIME STAGE ----------
